@@ -1,110 +1,43 @@
 import 'package:flutter/material.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+import 'pages/welcome_page.dart';
+
 void main() {
-  runApp(TfahhasApp());
+  runApp(const VirusScannerApp());
 }
 
-class TfahhasApp extends StatelessWidget {
+class VirusScannerApp extends StatefulWidget {
+  const VirusScannerApp({super.key});
+
+  @override
+  State<VirusScannerApp> createState() => _VirusScannerAppState();
+}
+
+class _VirusScannerAppState extends State<VirusScannerApp> {
+  bool isDarkMode = false;
+  bool isArabic = false;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
+      title: 'TFAHHAS',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("TFAHHAS App")),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "Check your Link or File",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => LinkCheckPage()));
-              },
-              child: Text("Check Link"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => FileCheckPage()));
-              },
-              child: Text("Check File"),
-            ),
-          ],
+        brightness: isDarkMode ? Brightness.dark : Brightness.light,
+        scaffoldBackgroundColor: isDarkMode ? Color(0xFF272643) : Color(0xFFE3F6F5),
+        textTheme: GoogleFonts.cairoTextTheme().apply(
+          bodyColor: isDarkMode ? Color(0xFFE3F6F5) : Color(0xFF2C698D),
+          displayColor: isDarkMode ? Color(0xFFE3F6F5) : Color(0xFF2C698D),
         ),
+        colorSchemeSeed: const Color(0xFF2C698D),
+        useMaterial3: true,
       ),
-    );
-  }
-}
-
-class LinkCheckPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Check Your Link")),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text("Avoid fake links, let our app scan them for you!"),
-            SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: "Put Your Link",
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {},
-              child: Text("Check"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class FileCheckPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Check Your File")),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text("Upload your document to check its security."),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {},
-              child: Text("Upload Document"),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {},
-              child: Text("Check"),
-            ),
-          ],
-        ),
+      debugShowCheckedModeBanner: false,
+      home: WelcomePage(
+        toggleDarkMode: () => setState(() => isDarkMode = !isDarkMode),
+        toggleLanguage: () => setState(() => isArabic = !isArabic),
+        isArabic: isArabic,
+        isDarkMode: isDarkMode,
       ),
     );
   }
