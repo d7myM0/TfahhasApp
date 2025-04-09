@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'success_page.dart';
+import 'package:virus_total_scanner/services/virus_total_service.dart';
+
 
 class ScanUrlPage extends StatefulWidget {
   final bool isArabic;
@@ -84,9 +86,32 @@ class _ScanUrlPageState extends State<ScanUrlPage> {
                   icon: Icon(Icons.search, color: unifiedColor),
                   label: Text(
                     widget.isArabic ? 'فحص الرابط' : 'Scan URL',
-                    style: TextStyle(color: unifiedColor, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: unifiedColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
-                  onPressed: scanUrl,
+                  onPressed: () async {
+                    final url = _controller.text.trim();
+                    if (url.isNotEmpty) {
+                      try {
+                        final result = await VirusTotalService.scanUrl(url);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SuccessPage(
+                              resultText: result.toString(), // أو تنسيق حسب الحاجة
+                            ),
+                          ),
+                        );// ✅ يمكنك استبداله بـ Navigator لصفحة SuccessPage
+                      } catch (e) {
+                        print("Error: $e");
+                      }
+                    } else {
+                      print("URL is empty");
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
@@ -94,7 +119,7 @@ class _ScanUrlPageState extends State<ScanUrlPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                ),
+                )
               ],
             ),
           ),

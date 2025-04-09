@@ -4,6 +4,10 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'success_page.dart';
+import 'package:virus_total_scanner/services/virus_total_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+
 
 class ScanFilePage extends StatefulWidget {
   final bool isArabic;
@@ -15,26 +19,7 @@ class ScanFilePage extends StatefulWidget {
 }
 
 class _ScanFilePageState extends State<ScanFilePage> {
-  Future<void> pickAndScanFile() async {
-    FilePickerResult? picked = await FilePicker.platform.pickFiles();
-    if (picked != null) {
-      File file = File(picked.files.single.path!);
-      var request = http.MultipartRequest('POST', Uri.parse('http://10.0.2.2:5000/scan-file'));
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
-      var response = await request.send();
-      var responseBody = await response.stream.bytesToString();
-      final data = jsonDecode(responseBody);
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => SuccessPage(
-            resultText: data['data']?['attributes']?['stats']?.toString() ?? 'No result',
-          ),
-        ),
-      );
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -74,9 +59,37 @@ class _ScanFilePageState extends State<ScanFilePage> {
                   icon: Icon(Icons.file_upload, color: unifiedColor),
                   label: Text(
                     widget.isArabic ? "اختر ملفاً للفحص" : "Choose File to Scan",
-                    style: TextStyle(color: unifiedColor, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: unifiedColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  onPressed: pickAndScanFile,
+                  onPressed: () async {
+                    PermissionStatus status = await Permission.storage.request();
+                    if (!status.isGranted) {
+                      print("الصلاحية غير مفعلة!");
+                      return;
+                    }
+                    FilePickerResult? picked = await FilePicker.platform.pickFiles();
+                    if (picked != null) {
+                      String filePath = picked.files.single.path!;
+                      try {
+                        final result = await VirusTotalService.scanFile(filePath);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SuccessPage(
+                              resultText: result.toString(),
+                            ),
+                          ),
+                        );
+                        // ✅ أو مرر النتيجة إلى صفحة SuccessPage مثلاً
+                      } catch (e) {
+                        print("Error: $e");
+                      }
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
@@ -84,7 +97,8 @@ class _ScanFilePageState extends State<ScanFilePage> {
                     side: BorderSide(color: unifiedColor, width: 2),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                ),
+                )
+
               ],
             ),
           ),
