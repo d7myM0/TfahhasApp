@@ -1,65 +1,128 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:convert';
 
-class SuccessPage extends StatelessWidget {
+class SuccessPage extends StatefulWidget {
   final String resultText;
+  final bool isArabic;
 
-  const SuccessPage({super.key, required this.resultText});
+  const SuccessPage({
+    super.key,
+    required this.resultText,
+    this.isArabic = true,
+  });
+
+  @override
+  State<SuccessPage> createState() => _SuccessPageState();
+}
+
+class _SuccessPageState extends State<SuccessPage> {
+  late String status;
+  late Color statusColor;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _analyzeResult();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          backgroundColor: statusColor.withOpacity(0.9),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Text(
+            status,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cairo(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              child: Text(
+                widget.isArabic ? "موافق" : "OK",
+                style: const TextStyle(color: Colors.white),
+              ),
+            )
+          ],
+        ),
+      );
+    });
+  }
+
+  void _analyzeResult() {
+    status = widget.isArabic ? 'غير معروف' : 'Unknown';
+    statusColor = Colors.grey;
+
+    try {
+      final decoded = jsonDecode(widget.resultText);
+
+      if (decoded['error'] != null) {
+        status = widget.isArabic ? '❌ فشل الفحص' : 'Scan Failed';
+        statusColor = Colors.red;
+        return;
+      }
+
+      // نبدأ بفحص وجود data
+      final data = decoded['data'];
+      if (data == null || data is! Map) throw Exception("Missing or invalid 'data'");
+
+      final attributes = data['attributes'];
+      if (attributes == null || attributes is! Map) throw Exception("Missing or invalid 'attributes'");
+
+      int malicious = 0;
+      int suspicious = 0;
+
+      // ✅ نحاول stats أولًا
+      if (attributes.containsKey('stats') && attributes['stats'] is Map) {
+        final stats = attributes['stats'];
+        malicious = stats['malicious'] ?? 0;
+        suspicious = stats['suspicious'] ?? 0;
+      }
+
+      // ✅ إذا لم يوجد، fallback إلى results
+      if ((malicious + suspicious) == 0 && attributes.containsKey('results')) {
+        final results = attributes['results'];
+        if (results is Map) {
+          for (final entry in results.entries) {
+            final category = entry.value['category'];
+            if (category == 'malicious') malicious++;
+            if (category == 'suspicious') suspicious++;
+          }
+        }
+      }
+
+      // ✅ تحديد الحالة النهائية
+      if (malicious > 0) {
+        status = widget.isArabic ? '⚠️ ضار' : 'Malicious';
+        statusColor = Colors.red;
+      } else if (suspicious > 0) {
+        status = widget.isArabic ? '❓ مشبوه' : 'Suspicious';
+        statusColor = Colors.orange;
+      } else {
+        status = widget.isArabic ? '✅ آمن' : 'Safe';
+        statusColor = Colors.green;
+      }
+    } catch (e) {
+      // ✅ طباعة الخطأ للمساعدة في التصحيح
+      print("❌ تحليل النتيجة فشل: $e");
+
+      status = widget.isArabic ? '⚠️ تعذر قراءة النتيجة' : 'Failed to parse result';
+      statusColor = Colors.grey;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final Color unifiedColor = isDarkMode ? const Color(0xFFE3F6F5) : const Color(0xFF2C698D);
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          "Scan Result",
-          style: TextStyle(color: unifiedColor, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: unifiedColor,
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: Icon(Icons.arrow_back, color: unifiedColor),
-          onPressed: () => Navigator.of(context).pop(),
-        )
-            : null,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.check_circle_outline, size: 100, color: Colors.green),
-              const SizedBox(height: 20),
-              Text(
-                "Scan completed successfully!",
-                style: GoogleFonts.cairo(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: unifiedColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                resultText,
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: unifiedColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
+    return const Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SizedBox.shrink(),
     );
   }
 }

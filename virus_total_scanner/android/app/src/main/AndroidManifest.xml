@@ -1,4 +1,10 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.virus_total_scanner"
+    xmlns:tools="http://schemas.android.com/tools"> <!-- ✅ أضف هذا السطر -->
+
+    <!-- ✅ الصلاحيات المطلوبة للوصول للملفات -->
+        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
     <application
         android:label="virus_total_scanner"
         android:name="${applicationName}"

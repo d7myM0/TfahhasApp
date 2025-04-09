@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'success_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:virus_total_scanner/services/virus_total_service.dart';
+import 'success_page.dart';
+import 'dart:convert'; //
 
 
 class ScanUrlPage extends StatefulWidget {
@@ -16,29 +16,11 @@ class ScanUrlPage extends StatefulWidget {
 class _ScanUrlPageState extends State<ScanUrlPage> {
   final TextEditingController _controller = TextEditingController();
 
-  Future<void> scanUrl() async {
-    final response = await http.post(
-      Uri.parse('http://10.0.2.2:5000/scan-url'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'url': _controller.text}),
-    );
-    final data = jsonDecode(response.body);
-
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SuccessPage(
-          resultText: data['data']?['attributes']?['stats']?.toString() ?? 'No result',
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final Color unifiedColor = isDarkMode ? const Color(0xFFE3F6F5) : const Color(0xFF2C698D);
+    final Color unifiedColor =
+    isDarkMode ? const Color(0xFFE3F6F5) : const Color(0xFF2C698D);
 
     return Scaffold(
       appBar: AppBar(
@@ -71,9 +53,12 @@ class _ScanUrlPageState extends State<ScanUrlPage> {
                 const SizedBox(height: 30),
                 TextField(
                   controller: _controller,
-                  style: TextStyle(color: unifiedColor, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: unifiedColor, fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
-                    labelText: widget.isArabic ? 'أدخل الرابط للفحص' : 'Enter URL to scan',
+                    labelText: widget.isArabic
+                        ? 'أدخل الرابط للفحص'
+                        : 'Enter URL to scan',
                     labelStyle: TextStyle(color: unifiedColor),
                     border: const OutlineInputBorder(),
                     focusedBorder: OutlineInputBorder(
@@ -94,30 +79,72 @@ class _ScanUrlPageState extends State<ScanUrlPage> {
                   ),
                   onPressed: () async {
                     final url = _controller.text.trim();
-                    if (url.isNotEmpty) {
-                      try {
-                        final result = await VirusTotalService.scanUrl(url);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => SuccessPage(
-                              resultText: result.toString(), // أو تنسيق حسب الحاجة
-                            ),
+
+                    if (url.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(widget.isArabic
+                              ? 'الرجاء إدخال رابط.'
+                              : 'Please enter a URL.'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (!url.startsWith('http://') &&
+                        !url.startsWith('https://')) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(widget.isArabic
+                              ? 'تنسيق الرابط غير صالح.'
+                              : 'Invalid URL format.'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    try {
+                      debugPrint("🔍 Sending URL: $url");
+                      final result = await VirusTotalService.scanUrl(url);
+                      debugPrint("✅ API Response: $result");
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SuccessPage(
+                            resultText: jsonEncode(result), // ✅ تعديل مهم هنا
+                            isArabic: widget.isArabic,
                           ),
-                        );// ✅ يمكنك استبداله بـ Navigator لصفحة SuccessPage
-                      } catch (e) {
-                        print("Error: $e");
-                      }
-                    } else {
-                      print("URL is empty");
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint("❌ Error: $e");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(widget.isArabic
+                              ? 'حدث خطأ أثناء الفحص.'
+                              : 'An error occurred during the scan.'),
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint("❌ Error: $e");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(widget.isArabic
+                              ? 'حدث خطأ أثناء الفحص.'
+                              : 'An error occurred during the scan.'),
+                        ),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     side: BorderSide(color: unifiedColor, width: 2),
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 )
               ],
