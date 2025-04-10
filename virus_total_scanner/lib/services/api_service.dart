@@ -6,7 +6,7 @@ import 'package:file_picker/file_picker.dart';
 class ApiService {
   static Future<String> scanUrl(String url) async {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:5000/scan-url'),
+      Uri.parse('https://tfahhasapp.onrender.com/scan-url'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'url': url}),
     );
@@ -18,7 +18,10 @@ class ApiService {
     FilePickerResult? picked = await FilePicker.platform.pickFiles();
     if (picked != null) {
       File file = File(picked.files.single.path!);
-      var request = http.MultipartRequest('POST', Uri.parse('http://10.0.2.2:5000/scan-file'));
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('https://tfahhasapp.onrender.com/scan-file'),
+      );
       request.files.add(await http.MultipartFile.fromPath('file', file.path));
       var response = await request.send();
       var responseBody = await response.stream.bytesToString();
