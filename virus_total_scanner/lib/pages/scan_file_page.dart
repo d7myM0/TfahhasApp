@@ -7,8 +7,6 @@ import 'success_page.dart';
 import 'package:virus_total_scanner/services/virus_total_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-
-
 class ScanFilePage extends StatefulWidget {
   final bool isArabic;
 
@@ -19,12 +17,11 @@ class ScanFilePage extends StatefulWidget {
 }
 
 class _ScanFilePageState extends State<ScanFilePage> {
-
-
   @override
   Widget build(BuildContext context) {
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final Color unifiedColor = isDarkMode ? const Color(0xFFE3F6F5) : const Color(0xFF2C698D);
+    final Color unifiedColor =
+    isDarkMode ? const Color(0xFFE3F6F5) : const Color(0xFF2C698D);
 
     return Scaffold(
       appBar: AppBar(
@@ -47,7 +44,9 @@ class _ScanFilePageState extends State<ScanFilePage> {
         padding: const EdgeInsets.all(20.0),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minHeight: MediaQuery.of(context).size.height - kToolbarHeight - 40,
+            minHeight: MediaQuery.of(context).size.height -
+                kToolbarHeight -
+                40,
           ),
           child: Center(
             child: Column(
@@ -58,7 +57,9 @@ class _ScanFilePageState extends State<ScanFilePage> {
                 ElevatedButton.icon(
                   icon: Icon(Icons.file_upload, color: unifiedColor),
                   label: Text(
-                    widget.isArabic ? "اختر ملفاً للفحص" : "Choose File to Scan",
+                    widget.isArabic
+                        ? "اختر ملفاً للفحص"
+                        : "Choose File to Scan",
                     style: TextStyle(
                       color: unifiedColor,
                       fontSize: 16,
@@ -66,39 +67,54 @@ class _ScanFilePageState extends State<ScanFilePage> {
                     ),
                   ),
                   onPressed: () async {
-                    PermissionStatus status = await Permission.storage.request();
+                    PermissionStatus status =
+                    await Permission.storage.request();
                     if (!status.isGranted) {
                       print("الصلاحية غير مفعلة!");
                       return;
                     }
-                    FilePickerResult? picked = await FilePicker.platform.pickFiles();
+
+                    // 🧼 تفريغ الملفات المؤقتة للسماح برفع نفس الملف مرة أخرى
+                    await FilePicker.platform.clearTemporaryFiles();
+
+                    FilePickerResult? picked =
+                    await FilePicker.platform.pickFiles();
                     if (picked != null) {
                       String filePath = picked.files.single.path!;
                       try {
-                        final result = await VirusTotalService.scanFile(filePath);
+                        final result =
+                        await VirusTotalService.scanFile(filePath);
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => SuccessPage(
-                              resultText: result.toString(),
+                              resultText: jsonEncode(result),
+                              isArabic: widget.isArabic,
                             ),
                           ),
                         );
-                        // ✅ أو مرر النتيجة إلى صفحة SuccessPage مثلاً
                       } catch (e) {
-                        print("Error: $e");
+                        print("❌ Error: $e");
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(widget.isArabic
+                                ? 'حدث خطأ أثناء الفحص.'
+                                : 'An error occurred during the scan.'),
+                          ),
+                        );
                       }
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 16),
                     side: BorderSide(color: unifiedColor, width: 2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 )
-
               ],
             ),
           ),

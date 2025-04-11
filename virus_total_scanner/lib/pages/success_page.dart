@@ -69,24 +69,31 @@ class _SuccessPageState extends State<SuccessPage> {
         return;
       }
 
-      // نبدأ بفحص وجود data
       final data = decoded['data'];
-      if (data == null || data is! Map) throw Exception("Missing or invalid 'data'");
+      if (data == null || data is! Map) {
+        status = widget.isArabic ? '⚠️ لا يمكن تحليل الملف' : 'Unable to analyze the file';
+        statusColor = Colors.grey;
+        return;
+      }
 
       final attributes = data['attributes'];
-      if (attributes == null || attributes is! Map) throw Exception("Missing or invalid 'attributes'");
+      if (attributes == null || attributes is! Map) {
+        status = widget.isArabic
+            ? '⚠️ لم يتم العثور على بيانات التحليل'
+            : 'No analysis attributes found';
+        statusColor = Colors.grey;
+        return;
+      }
 
       int malicious = 0;
       int suspicious = 0;
 
-      // ✅ نحاول stats أولًا
       if (attributes.containsKey('stats') && attributes['stats'] is Map) {
         final stats = attributes['stats'];
         malicious = stats['malicious'] ?? 0;
         suspicious = stats['suspicious'] ?? 0;
       }
 
-      // ✅ إذا لم يوجد، fallback إلى results
       if ((malicious + suspicious) == 0 && attributes.containsKey('results')) {
         final results = attributes['results'];
         if (results is Map) {
@@ -98,7 +105,6 @@ class _SuccessPageState extends State<SuccessPage> {
         }
       }
 
-      // ✅ تحديد الحالة النهائية
       if (malicious > 0) {
         status = widget.isArabic ? '⚠️ ضار' : 'Malicious';
         statusColor = Colors.red;
@@ -110,13 +116,12 @@ class _SuccessPageState extends State<SuccessPage> {
         statusColor = Colors.green;
       }
     } catch (e) {
-      // ✅ طباعة الخطأ للمساعدة في التصحيح
       print("❌ تحليل النتيجة فشل: $e");
-
       status = widget.isArabic ? '⚠️ تعذر قراءة النتيجة' : 'Failed to parse result';
       statusColor = Colors.grey;
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

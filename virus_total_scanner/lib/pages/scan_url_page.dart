@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:virus_total_scanner/services/virus_total_service.dart';
 import 'success_page.dart';
-import 'dart:convert'; //
-
+import 'dart:convert';
 
 class ScanUrlPage extends StatefulWidget {
   final bool isArabic;
@@ -78,7 +77,7 @@ class _ScanUrlPageState extends State<ScanUrlPage> {
                     ),
                   ),
                   onPressed: () async {
-                    final url = _controller.text.trim();
+                    String url = _controller.text.trim().toLowerCase();
 
                     if (url.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -93,14 +92,7 @@ class _ScanUrlPageState extends State<ScanUrlPage> {
 
                     if (!url.startsWith('http://') &&
                         !url.startsWith('https://')) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(widget.isArabic
-                              ? 'تنسيق الرابط غير صالح.'
-                              : 'Invalid URL format.'),
-                        ),
-                      );
-                      return;
+                      url = 'https://$url';
                     }
 
                     try {
@@ -112,18 +104,9 @@ class _ScanUrlPageState extends State<ScanUrlPage> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => SuccessPage(
-                            resultText: jsonEncode(result), // ✅ تعديل مهم هنا
+                            resultText: jsonEncode(result),
                             isArabic: widget.isArabic,
                           ),
-                        ),
-                      );
-                    } catch (e) {
-                      debugPrint("❌ Error: $e");
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(widget.isArabic
-                              ? 'حدث خطأ أثناء الفحص.'
-                              : 'An error occurred during the scan.'),
                         ),
                       );
                     } catch (e) {
