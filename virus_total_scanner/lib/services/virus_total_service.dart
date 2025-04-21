@@ -14,21 +14,23 @@ class VirusTotalService {
     }
   }
 
-  /// فحص ملف باستخدام Kotlin و VirusTotal API
+ /// فحص ملف باستخدام Flask API المعدل
   static Future<Map<String, dynamic>> scanFile(String filePath) async {
-    try {
-      final result = await _channel.invokeMethod('scanFile', {'filePath': filePath});
-      final decoded = jsonDecode(result);
+  try {
+    final result = await _channel.invokeMethod('scanFile', {'filePath': filePath});
+    final Map<String, dynamic> initial = jsonDecode(result);
+    final analysisId = initial['data']?['id'];
 
-      // نتأكد أن data موجودة
-      if (decoded['data'] == null) {
-        throw Exception("الرد من API لا يحتوي على 'data'");
-      }
+    if (analysisId == null) throw Exception("No analysis ID received");
 
-      // ✅ نعيد الرد بالكامل حتى لو ما فيه attributes
-      return decoded;
-    } catch (e) {
-      throw Exception("خطأ في فحص الملف: $e");
-    }
+    // ننتظر ثواني قليلة قبل الطلب الثاني (اختياري)
+    await Future.delayed(Duration(seconds: 3));
+
+    // الآن نطلب نتيجة التحليل
+    final finalResult = await _channel.invokeMethod('getAnalysis', {'id': analysisId});
+    return jsonDecode(finalResult);
+  } catch (e) {
+    throw Exception("خطأ في فحص الملف: $e");
   }
+}
 }

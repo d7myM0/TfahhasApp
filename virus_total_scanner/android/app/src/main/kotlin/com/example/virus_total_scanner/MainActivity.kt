@@ -35,12 +35,20 @@ class MainActivity : FlutterActivity() {
                         scanFileWithVirusTotal(path, result)
                     }
                 }
-
-                else -> result.notImplemented()
+ // ✅ هذا هو الجزء الذي تحتاج تضيفه
+            	"getAnalysis" -> {
+                	val id = call.argument<String>("id")
+                	if (id != null) {
+                    	getAnalysisResult(id, result)
+                	} else {
+                    	result.error("MISSING_ID", "Analysis ID is missing", null)
+                }
             }
+
+            else -> result.notImplemented()
         }
     }
-
+}
    private fun scanUrlWithVirusTotal(url: String, result: MethodChannel.Result) {
     val apiKey = "a90376316088396b21b6c0d7f5e4cc36746f63077e1ec47890226d402ac9d2c0"
     val client = OkHttpClient()
@@ -98,31 +106,63 @@ class MainActivity : FlutterActivity() {
         })
     }
 
-    private fun scanFileWithVirusTotal(filePath: String, result: MethodChannel.Result) {
-        val apiKey = "a90376316088396b21b6c0d7f5e4cc36746f63077e1ec47890226d402ac9d2c0"
-        val client = OkHttpClient()
-        val file = File(filePath)
+  private fun scanFileWithVirusTotal(filePath: String, result: MethodChannel.Result) {
+    val apiKey = "a90376316088396b21b6c0d7f5e4cc36746f63077e1ec47890226d402ac9d2c0"
+    val client = OkHttpClient()
+    val file = File(filePath)
 
-        val requestBody = MultipartBody.Builder()
-            .setType(MultipartBody.FORM)
-            .addFormDataPart("file", file.name, file.asRequestBody())
-            .build()
+    val requestBody = MultipartBody.Builder()
+        .setType(MultipartBody.FORM)
+        .addFormDataPart("file", file.name, file.asRequestBody())
+        .build()
 
-        val request = Request.Builder()
-            .url("https://www.virustotal.com/api/v3/files")
-            .addHeader("x-apikey", apiKey)
-            .post(requestBody)
-            .build()
+    val request = Request.Builder()
+        .url("https://www.virustotal.com/api/v3/files")
+        .addHeader("x-apikey", apiKey)
+        .post(requestBody)
+        .build()
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                result.error("ERROR", e.message, null)
+    client.newCall(request).enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            result.error("ERROR", e.message, null)
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            val resBody = response.body?.string()
+            val jsonResponse = JSONObject(resBody ?: "{}")
+            val analysisId = jsonResponse.optJSONObject("data")?.optString("id")
+
+            if (!analysisId.isNullOrEmpty()) {
+                // ✅ تأخير 3 ثوانٍ ثم طلب النتيجة
+                Thread.sleep(3000)
+                getAnalysisResult(analysisId, result)
+            } else {
+                result.error("NO_ANALYSIS_ID", "No analysis ID received", null)
             }
+        }
+    })
+}
 
-            override fun onResponse(call: Call, response: Response) {
-                val resBody = response.body?.string()
-                result.success(resBody)
-            }
-        })
-    }
+
+private fun getAnalysisResult(analysisId: String, result: MethodChannel.Result) {
+    val apiKey = "a90376316088396b21b6c0d7f5e4cc36746f63077e1ec47890226d402ac9d2c0"
+    val client = OkHttpClient()
+
+    val request = Request.Builder()
+        .url("https://www.virustotal.com/api/v3/analyses/$analysisId")
+        .addHeader("x-apikey", apiKey)
+        .get()
+        .build()
+
+    client.newCall(request).enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            result.error("ERROR", e.message, null)
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            val fullReport = response.body?.string()
+            result.success(fullReport)
+        }
+    })
+}
 }

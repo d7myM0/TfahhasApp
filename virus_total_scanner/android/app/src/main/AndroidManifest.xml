@@ -6,7 +6,7 @@
         <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 
     <application
-        android:label="virus_total_scanner"
+        android:label="TFAHHAS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

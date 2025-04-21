@@ -1,5 +1,5 @@
-name: virus_total_scanner
-description: "A new Flutter project."
+name: tfahhas
+description: "A new Flutter project called TFAHHAS"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -35,6 +35,8 @@ dependencies:
   http: 1.3.0
   file_picker: ^6.1.1
   permission_handler: ^11.0.0
+  shared_preferences: ^2.2.2
+  intl: ^0.18.1
 
 
 
@@ -63,6 +65,7 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 class SuccessPage extends StatefulWidget {
   final String resultText;
   final bool isArabic;
+  final String? fileName;
 
   const SuccessPage({
     super.key,
     required this.resultText,
+    this.fileName,
     this.isArabic = true,
   });
 
@@ -19,70 +22,43 @@ class SuccessPage extends StatefulWidget {
 class _SuccessPageState extends State<SuccessPage> {
   late String status;
   late Color statusColor;
+  late String scanType;
+  late String scanTarget;
+  late String scanDate;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _analyzeResult();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          backgroundColor: statusColor.withOpacity(0.9),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          content: Text(
-            status,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.cairo(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-              child: Text(
-                widget.isArabic ? "موافق" : "OK",
-                style: const TextStyle(color: Colors.white),
-              ),
-            )
-          ],
-        ),
-      );
-    });
   }
 
   void _analyzeResult() {
     status = widget.isArabic ? 'غير معروف' : 'Unknown';
     statusColor = Colors.grey;
+    scanType = widget.isArabic ? 'غير معروف' : 'Unknown';
+    scanTarget = '-';
+    scanDate = '-';
 
     try {
       final decoded = jsonDecode(widget.resultText);
 
-      if (decoded['error'] != null) {
-        status = widget.isArabic ? '❌ فشل الفحص' : 'Scan Failed';
-        statusColor = Colors.red;
-        return;
+      // تحديد النوع: رابط أو ملف
+      if (decoded['meta'] != null && decoded['meta']['url_info'] != null) {
+        scanType = widget.isArabic ? 'رابط' : 'Link';
+        scanTarget = decoded['meta']['url_info']['url'] ?? '-';
+      } else if (decoded['meta'] != null && decoded['meta']['file_info'] != null) {
+        scanType = widget.isArabic ? 'ملف' : 'File';
+        scanTarget = widget.fileName ?? '-';
       }
 
       final data = decoded['data'];
-      if (data == null || data is! Map) {
-        status = widget.isArabic ? '⚠️ لا يمكن تحليل الملف' : 'Unable to analyze the file';
-        statusColor = Colors.grey;
-        return;
-      }
-
       final attributes = data['attributes'];
-      if (attributes == null || attributes is! Map) {
-        status = widget.isArabic
-            ? '⚠️ لم يتم العثور على بيانات التحليل'
-            : 'No analysis attributes found';
-        statusColor = Colors.grey;
-        return;
+
+      // تحديد التاريخ
+      if (attributes['date'] != null) {
+        final timestamp = attributes['date'] * 1000;
+        final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
+        scanDate = DateFormat('yyyy-MM-dd HH:mm').format(date);
       }
 
       int malicious = 0;
@@ -122,12 +98,71 @@ class _SuccessPageState extends State<SuccessPage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SizedBox.shrink(),
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Color backgroundColor = isDarkMode ? const Color(0xFF2C698D) : const Color(0xFFE3F6F5);
+    final Color textColor = isDarkMode ? Colors.white : Colors.black;
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDarkMode ? Colors.black12 : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.verified, size: 50, color: statusColor),
+                const SizedBox(height: 20),
+                Text(
+                  widget.isArabic ? "نتيجة الفحص" : "Scan Result",
+                  style: GoogleFonts.cairo(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
+                ),
+                const SizedBox(height: 10),
+                _infoRow(widget.isArabic ? "النوع" : "Type", scanType, textColor),
+                _infoRow(widget.isArabic ? "الرابط/الملف" : "URL/File", scanTarget, textColor),
+                _infoRow(widget.isArabic ? "وقت الفحص" : "Scan Time", scanDate, textColor),
+                _infoRow(widget.isArabic ? "مستوى الخطورة" : "Risk Level", status, statusColor),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: statusColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text(widget.isArabic ? "العودة" : "Back", style: const TextStyle(color: Colors.white)),
+                )
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(label, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: color)),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(value, style: GoogleFonts.cairo(color: color)),
+          ),
+        ],
+      ),
     );
   }
 }

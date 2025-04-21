@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
+import time  # يجب إضافتها
+
 
 app = Flask(__name__)
 CORS(app)
@@ -33,13 +35,25 @@ def scan_url():
 def scan_file():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
+
     file = request.files["file"]
 
     headers = {"x-apikey": VT_API_KEY}
     files = {"file": (file.filename, file.stream, file.mimetype)}
-    response = requests.post(f"{VT_BASE_URL}/files", files=files, headers=headers)
 
-    return jsonify(response.json())
+    # 1. رفع الملف
+    upload_response = requests.post(f"{VT_BASE_URL}/files", files=files, headers=headers)
+    if upload_response.status_code != 200:
+        return jsonify({"error": "Failed to upload file"}), 500
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    upload_data = upload_response.json()
+    analysis_id = upload_data.get("data", {}).get("id")
+    if not analysis_id:
+        return jsonify({"error": "No analysis ID returned"}), 500
+
+    # 2. الانتظار (إجباري في حالة VirusTotal)
+    time.sleep(8)
+
+    # 3. طلب التحليل النهائي
+    analysis_response = requests.get(f"{VT_BASE_URL}/analyses/{analysis_id}", headers=headers)
+    return jsonify(analysis_response.json())
