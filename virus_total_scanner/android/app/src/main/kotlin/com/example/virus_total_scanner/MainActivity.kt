@@ -35,6 +35,14 @@ class MainActivity : FlutterActivity() {
                         scanFileWithVirusTotal(path, result)
                     }
                 }
+"getFileReport" -> {
+    val hash = call.argument<String>("hash")
+    if (hash != null) {
+        getFileReport(hash, result)
+    } else {
+        result.error("MISSING_HASH", "SHA256 is missing", null)
+    }
+}
  // ✅ هذا هو الجزء الذي تحتاج تضيفه
             	"getAnalysis" -> {
                 	val id = call.argument<String>("id")
@@ -48,6 +56,27 @@ class MainActivity : FlutterActivity() {
             else -> result.notImplemented()
         }
     }
+}
+private fun getFileReport(sha256: String, result: MethodChannel.Result) {
+    val apiKey = "YOUR_API_KEY"
+    val client = OkHttpClient()
+
+    val request = Request.Builder()
+        .url("https://www.virustotal.com/api/v3/files/$sha256")
+        .addHeader("x-apikey", apiKey)
+        .get()
+        .build()
+
+    client.newCall(request).enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            result.error("ERROR", e.message, null)
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            val body = response.body?.string()
+            result.success(body)
+        }
+    })
 }
    private fun scanUrlWithVirusTotal(url: String, result: MethodChannel.Result) {
     val apiKey = "a90376316088396b21b6c0d7f5e4cc36746f63077e1ec47890226d402ac9d2c0"

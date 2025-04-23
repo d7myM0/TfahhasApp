@@ -48,5 +48,13 @@ class VirusTotalService {
   }
 }
 
+static Future<Map<String, dynamic>> getFileReport(String sha256) async {
+  try {
+    final result = await _channel.invokeMethod('getFileReport', {'hash': sha256});
+    return jsonDecode(result);
+  } catch (e) {
+    throw Exception("خطأ في جلب تقرير الملف عبر sha256: $e");
+  }
+}
 
 }
