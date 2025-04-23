@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'Loading_Screen_page.dart';
-import 'dart:convert';
-import 'success_page.dart';
-import 'package:tfahhas/services/virus_total_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ScanFilePage extends StatefulWidget {
@@ -96,54 +92,16 @@ class _ScanFilePageState extends State<ScanFilePage> {
                     FilePickerResult? picked = await FilePicker.platform.pickFiles();
 
                     if (picked != null) {
-                      String filePath = picked.files.single.path!;
-                      try {
-                        // final result = await VirusTotalService.scanFile(filePath);
-                        // print("📦 نتيجة الفحص: $result");
-                        final fileName = filePath.split('/').last;
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => LoadingScreenPage(
-                              filePath: picked.files.single.path!,
-                              fileName: picked.files.single.name,
-                              isArabic: widget.isArabic,
-                            ),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LoadingScreenPage(
+                            filePath: picked.files.single.path!,
+                            fileName: picked.files.single.name,
+                            isArabic: widget.isArabic,
                           ),
-                        );
-
-// ثم، في LoadingScreen، ابدأ عملية الفحص
-                        void startScan() async {
-                          // تنفيذ عملية الفحص
-                          final result = await VirusTotalService.scanFile(filePath);
-
-                          // بعد الانتهاء، انتقل إلى صفحة النتائج
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SuccessPage(
-                                resultText: jsonEncode(result),
-                                isArabic: true,
-                                fileName: picked.files.single.name, // ✅ نمرر اسم الملف
-
-                              ),
-                            ),
-                          );
-                        }
-
-
-
-                      } catch (e) {
-                        print("❌ Error: $e");
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(widget.isArabic
-                                ? 'حدث خطأ أثناء الفحص.'
-                                : 'An error occurred during the scan.'),
-                          ),
-                        );
-                      }
+                        ),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -162,12 +120,3 @@ class _ScanFilePageState extends State<ScanFilePage> {
     );
   }
 }
-
-
-
-
-
-
-
-
-

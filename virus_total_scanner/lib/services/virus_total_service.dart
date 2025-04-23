@@ -23,14 +23,30 @@ class VirusTotalService {
 
     if (analysisId == null) throw Exception("No analysis ID received");
 
-    // ننتظر ثواني قليلة قبل الطلب الثاني (اختياري)
-    await Future.delayed(Duration(seconds: 3));
+    const int maxRetries = 10;
+    const Duration delay = Duration(seconds: 3);
 
-    // الآن نطلب نتيجة التحليل
-    final finalResult = await _channel.invokeMethod('getAnalysis', {'id': analysisId});
-    return jsonDecode(finalResult);
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      await Future.delayed(delay);
+
+      final finalResultRaw = await _channel.invokeMethod('getAnalysis', {'id': analysisId});
+      final finalResult = jsonDecode(finalResultRaw);
+
+      final status = finalResult['data']?['attributes']?['status'];
+      if (status != null && status != 'queued') {
+        return finalResult;
+      }
+
+      if (attempt == maxRetries - 1) {
+        throw Exception("التحليل لم يكتمل بعد المحاولات القصوى");
+      }
+    }
+
+    throw Exception("Analysis didn't complete in time");
   } catch (e) {
     throw Exception("خطأ في فحص الملف: $e");
   }
 }
+
+
 }

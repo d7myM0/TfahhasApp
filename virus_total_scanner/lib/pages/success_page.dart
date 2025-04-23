@@ -25,6 +25,7 @@ class _SuccessPageState extends State<SuccessPage> {
   late String scanType;
   late String scanTarget;
   late String scanDate;
+  late String scanSummary;
 
   @override
   void didChangeDependencies() {
@@ -38,11 +39,11 @@ class _SuccessPageState extends State<SuccessPage> {
     scanType = widget.isArabic ? 'غير معروف' : 'Unknown';
     scanTarget = '-';
     scanDate = '-';
+    scanSummary = '';
 
     try {
       final decoded = jsonDecode(widget.resultText);
 
-      // تحديد النوع: رابط أو ملف
       if (decoded['meta'] != null && decoded['meta']['url_info'] != null) {
         scanType = widget.isArabic ? 'رابط' : 'Link';
         scanTarget = decoded['meta']['url_info']['url'] ?? '-';
@@ -53,8 +54,15 @@ class _SuccessPageState extends State<SuccessPage> {
 
       final data = decoded['data'];
       final attributes = data['attributes'];
+      final String? analysisStatus = attributes['status'];
+      if (analysisStatus == 'queued') {
+        // أرجع إلى صفحة التحميل لإعادة المحاولة
+        Future.microtask(() {
+          Navigator.of(context).pop(); // يغلق صفحة النتيجة
+        });
+        return; // لا تكمل
+      }
 
-      // تحديد التاريخ
       if (attributes['date'] != null) {
         final timestamp = attributes['date'] * 1000;
         final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -63,22 +71,36 @@ class _SuccessPageState extends State<SuccessPage> {
 
       int malicious = 0;
       int suspicious = 0;
+      int scannedEngines = 0;
 
-      if (attributes.containsKey('stats') && attributes['stats'] is Map) {
-        final stats = attributes['stats'];
-        malicious = stats['malicious'] ?? 0;
-        suspicious = stats['suspicious'] ?? 0;
-      }
+      if (attributes.containsKey('results') && attributes['results'] is Map) {
+        final results = attributes['results'] as Map;
 
-      if ((malicious + suspicious) == 0 && attributes.containsKey('results')) {
-        final results = attributes['results'];
-        if (results is Map) {
-          for (final entry in results.entries) {
-            final category = entry.value['category'];
-            if (category == 'malicious') malicious++;
-            if (category == 'suspicious') suspicious++;
+        for (final entry in results.entries) {
+          final category = entry.value['category'];
+          if (category == 'malicious') {
+            malicious++;
+            scannedEngines++;
+          } else if (category == 'suspicious') {
+            suspicious++;
+            scannedEngines++;
+          } else if (category != 'undetected' && category != null) {
+            scannedEngines++;
           }
         }
+      }
+
+      int flagged = malicious + suspicious;
+
+      if (scannedEngines > 0) {
+        final percent = ((flagged / scannedEngines) * 100).toStringAsFixed(1);
+        scanSummary = widget.isArabic
+            ? "$percent٪ من المحركات صنّفت الملف كمشبوه أو ضار"
+            : "$percent% of scanned engines flagged the file as malicious or suspicious";
+      } else {
+        status = widget.isArabic ? '⚠️ لم يتم تحليل الملف' : 'File not analyzed';
+        scanSummary = widget.isArabic ? "لا توجد نتائج تحليل متاحة" : "No analysis results available";
+        statusColor = Colors.grey;
       }
 
       if (malicious > 0) {
@@ -87,16 +109,18 @@ class _SuccessPageState extends State<SuccessPage> {
       } else if (suspicious > 0) {
         status = widget.isArabic ? '❓ مشبوه' : 'Suspicious';
         statusColor = Colors.orange;
-      } else {
+      } else if (scannedEngines > 0) {
         status = widget.isArabic ? '✅ آمن' : 'Safe';
         statusColor = Colors.green;
       }
+
     } catch (e) {
       print("❌ تحليل النتيجة فشل: $e");
       status = widget.isArabic ? '⚠️ تعذر قراءة النتيجة' : 'Failed to parse result';
       statusColor = Colors.grey;
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +154,12 @@ class _SuccessPageState extends State<SuccessPage> {
                 _infoRow(widget.isArabic ? "الرابط/الملف" : "URL/File", scanTarget, textColor),
                 _infoRow(widget.isArabic ? "وقت الفحص" : "Scan Time", scanDate, textColor),
                 _infoRow(widget.isArabic ? "مستوى الخطورة" : "Risk Level", status, statusColor),
+                const SizedBox(height: 16),
+                Text(
+                  scanSummary,
+                  style: GoogleFonts.cairo(fontSize: 14, color: textColor, fontWeight: FontWeight.w500),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),

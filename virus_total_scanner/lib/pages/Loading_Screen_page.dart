@@ -4,14 +4,16 @@ import '../services/virus_total_service.dart';
 import 'success_page.dart';
 
 class LoadingScreenPage extends StatefulWidget {
-  final String filePath;
-  final String fileName;
+  final String? filePath;
+  final String? fileName;
+  final String? url;
   final bool isArabic;
 
   const LoadingScreenPage({
     super.key,
-    required this.filePath,
-    required this.fileName,
+    this.filePath,
+    this.fileName,
+    this.url,
     this.isArabic = true,
   });
 
@@ -20,18 +22,26 @@ class LoadingScreenPage extends StatefulWidget {
 }
 
 class _LoadingScreenPageState extends State<LoadingScreenPage> {
+  int retries = 0;
+  final int maxRetries = 10;
   @override
   void initState() {
     super.initState();
-    startScan();
+    widget.url != null ? scanUrl() : scanFile();
   }
 
-  void startScan() async {
+  void scanFile() async {
     try {
-      final result = await VirusTotalService.scanFile(widget.filePath);
+      final result = await VirusTotalService.scanFile(widget.filePath!);
+      final status = result['data']?['attributes']?['status'];
+
+      if (status == 'queued' && retries < maxRetries) {
+        retries++;
+        Future.delayed(const Duration(seconds: 3), scanFile);
+        return;
+      }
 
       if (!mounted) return;
-
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -45,7 +55,37 @@ class _LoadingScreenPageState extends State<LoadingScreenPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.isArabic ? 'فشل الفحص' : 'Scan failed')),
+        SnackBar(content: Text(widget.isArabic ? 'فشل فحص الملف' : 'File scan failed')),
+      );
+      Navigator.pop(context);
+    }
+  }
+
+  void scanUrl() async {
+    try {
+      final result = await VirusTotalService.scanUrl(widget.url!);
+      final status = result['data']?['attributes']?['status'];
+
+      if (status == 'queued' && retries < maxRetries) {
+        retries++;
+        Future.delayed(const Duration(seconds: 3), scanUrl);
+        return;
+      }
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SuccessPage(
+            resultText: jsonEncode(result),
+            isArabic: widget.isArabic,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.isArabic ? 'فشل فحص الرابط' : 'URL scan failed')),
       );
       Navigator.pop(context);
     }
@@ -58,9 +98,9 @@ class _LoadingScreenPageState extends State<LoadingScreenPage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: backgroundColor, // ✅ توحيد اللون
-        elevation: 0, // ✅ إزالة الظل
-        toolbarHeight: 0, // ✅ إخفاء الـ AppBar تمامًا
+        backgroundColor: backgroundColor,
+        elevation: 0,
+        toolbarHeight: 0,
       ),
       body: Center(
         child: Column(
@@ -74,7 +114,9 @@ class _LoadingScreenPageState extends State<LoadingScreenPage> {
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
             Text(
-              widget.isArabic ? "جاري فحص الملف..." : "Scanning the file...",
+              widget.url != null
+                  ? (widget.isArabic ? "جاري فحص الرابط..." : "Scanning the URL...")
+                  : (widget.isArabic ? "جاري فحص الملف..." : "Scanning the file..."),
               style: const TextStyle(fontSize: 16),
             ),
           ],

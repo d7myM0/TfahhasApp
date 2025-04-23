@@ -4,6 +4,8 @@ import 'package:tfahhas/services/virus_total_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'success_page.dart';
 import 'dart:convert';
+import 'Loading_Screen_page.dart';
+
 
 class ScanUrlPage extends StatefulWidget {
   final bool isArabic;
@@ -61,27 +63,16 @@ class _ScanUrlPageState extends State<ScanUrlPage> {
       url = 'https://$url';
     }
 
-    try {
-      final result = await VirusTotalService.scanUrl(url);
-      await _saveUrl(url);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => SuccessPage(
-            resultText: jsonEncode(result),
-            isArabic: widget.isArabic,
-          ),
+    await _saveUrl(url);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LoadingScreenPage(url: url,
+          isArabic: widget.isArabic,
         ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.isArabic
-              ? 'حدث خطأ أثناء الفحص.'
-              : 'An error occurred during the scan.'),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   // 🟦 SECTION 2: واجهة المستخدم
