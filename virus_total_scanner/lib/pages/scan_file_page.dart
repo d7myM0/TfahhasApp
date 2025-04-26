@@ -82,10 +82,14 @@ class _ScanFilePageState extends State<ScanFilePage> {
                     ),
                   ),
                   onPressed: () async {
-                    PermissionStatus status = await Permission.storage.request();
-                    if (!status.isGranted) {
-                      print("الصلاحية غير مفعلة!");
-                      return;
+                    if (Platform.isAndroid) {
+                      if (await Permission.manageExternalStorage.isGranted == false) {
+                        PermissionStatus status = await Permission.manageExternalStorage.request();
+                        if (!status.isGranted) {
+                          print("الصلاحية غير مفعلة!");
+                          return;
+                        }
+                      }
                     }
 
                     await FilePicker.platform.clearTemporaryFiles();
@@ -104,6 +108,7 @@ class _ScanFilePageState extends State<ScanFilePage> {
                       );
                     }
                   },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
